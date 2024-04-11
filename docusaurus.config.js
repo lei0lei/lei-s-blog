@@ -64,9 +64,9 @@ const config = {
         },
         items: [
           {to: '/blog', label: 'Blog', position: 'left'},
-          {to: '/Programing', label: 'Programing', position: 'left'},
-          {to: '/Algo', label: 'Algo', position: 'left'},
-          {to: '/others', label: 'others', position: 'left'},
+          // {to: '/Programing', label: 'Programing', position: 'left'},
+          // {to: '/Algo', label: 'Algo', position: 'left'},
+          // {to: '/others', label: 'others', position: 'left'},
           {
             href: 'https://github.com/facebook/docusaurus',
             label: 'GitHub',

@@ -8,7 +8,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const config = {
   title: 'Lei\'s blog and personal knowledge collection',
   tagline: '....',
-  url: 'https://your-docusaurus-test-site.com',
+  url: 'https://lei-s-blog.vercel.app/',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -114,7 +114,7 @@ const config = {
               },
               {
                 label: 'Email',
-                href: 'lei.lei.fan.meng@gmail.com',
+                email: 'lei.lei.fan.meng@gmail.com',
               },
             ],
           },

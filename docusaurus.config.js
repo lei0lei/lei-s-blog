@@ -114,7 +114,6 @@ const config = {
               },
               {
                 label: 'Email',
-                email: 'lei.lei.fan.meng@gmail.com',
               },
             ],
           },

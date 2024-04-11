@@ -112,9 +112,6 @@ const config = {
                 label: 'Github Home Page',
                 href: 'https://stackoverflow.com/questions/tagged/docusaurus',
               },
-              {
-                label: 'Email',
-              },
             ],
           },
           {

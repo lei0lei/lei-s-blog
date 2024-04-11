@@ -7,7 +7,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Lei\'s blog and personal knowledge collection',
-  tagline: '....',
+  tagline: '业精于勤荒于嬉，行成于思毁于随',
   url: 'https://lei-s-blog.vercel.app/',
   baseUrl: '/',
   onBrokenLinks: 'throw',

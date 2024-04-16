@@ -1,6 +1,6 @@
 ---
-title: python
-slug: /python/intro
+title: oop
+slug: /python/oop
 sidebar_position: 1
 ---
 

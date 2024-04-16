@@ -67,6 +67,43 @@ pip install flet
 
 ## 创建flet app
 
+创建flex app可以使用:
+```sh
+flet create <project-name>
+```
+flet会创建一个带main.py的文件夹:
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    page.add(ft.SafeArea(ft.Text("Hello, Flet!")))
+
+ft.app(main)
+```
+
+:::note
+
+要在当前目录内创建使用:
+```sh
+flet create .
+```
+:::
+
+flet程序的`main()`函数中可以给页面或者窗口添加UI元素。
+`ft.app()`可以初始化flet app并运行main().
+
+要从counter模板中创建新的flet app：
+
+```sh
+flet create --template counter <project-name>
+```
+要在当前目录中创建，运行:
+```sh
+flet create --template counter .
+```
+
+关于`flet create`查看[create](https://flet.dev/docs/reference/cli/create/).
+
 
 ## 运行flet app
 

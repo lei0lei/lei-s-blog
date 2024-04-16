@@ -115,7 +115,15 @@ const config = {
         sidebarPath: require.resolve('./sidebars.js'),
       }, 
     ],
-    
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'project',
+        path: 'project',
+        routeBasePath: 'project',
+        sidebarPath: require.resolve('./sidebars.js'),
+      }, 
+    ],
   ],
 
   themeConfig:
@@ -169,6 +177,13 @@ const config = {
             sidebarId: 'tutorialSidebar',
             docsPluginId: 'ai',
             label: 'ai',
+          },
+          {
+            type: 'docSidebar',
+            position: 'left',
+            sidebarId: 'tutorialSidebar',
+            docsPluginId: 'project',
+            label: 'project',
           },
           {to: '/blog', label: 'paper', position: 'left'},
           {

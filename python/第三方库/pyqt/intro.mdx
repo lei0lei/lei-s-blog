@@ -1,0 +1,256 @@
+---
+title: intro
+slug: /python/pyqt/intro
+sidebar_position: 1
+---
+
+# Intro
+
+
+## 安装
+
+```
+$ python -m pip install pyqt6
+```
+
+pyqt的命名方式遵循Cpp的驼峰命名方式.
+
+## pyqt5与pyqt6
+
+## 组件
+
+- Widgets
+- Layout managers
+- Dialogs
+- Main windows
+- Applications
+- Event loops
+- Signals and slots
+大多数组件都表示为`PyQt6.QtWidgets`中的类.
+
+## 控件 widgets
+控件表示为矩形的图形元素放置在应用的窗口上，有一些属性和方法方便定制外观和行为。
+组件还会检测鼠标点击、按键和其他来自于用户，窗口系统或其他地方的事件。每次捕获
+一个事件都会产生一个信号来声明状态改变。
+
+常用的控件如下:
+- 按钮
+- 标签
+- Line edits
+- combo box
+- radio button
+
+通过实例化`QPushButton`类可以创建按钮，常见的按钮有 Ok, Cancel, Apply, Yes, No, 
+和 Close。
+
+![](https://files.realpython.com/media/buttons.40e5948189f6.png)
+
+通过`QLabel`可以创建标签，标签借助文本或者图片显示信息。
+
+<img src={"https://files.realpython.com/media/labels.f7818e2fa725.png"} alt="Image alt" />
+
+可以通过实例化`QComboBox`来创建combo box.
+
+<img src={"https://files.realpython.com/media/combo-box.442ec954da54.gif"} alt="Image alt" />
+
+上面的combo box 是只读的，用户可以选择选项中的一个，但是不能添加自己的选项。combo box也可以是可编辑的，
+允许用户添加新的选项，combo box也可以包含pixmap或者字符串。
+
+最后一个radio button可以使用`QRadioButton`,在需要用户在多个选项选择的时候比较有用，只能选择一个选项。
+要查看所有的组件，查看[forty](https://www.riverbankcomputing.com/static/Docs/PyQt6/api/qtwidgets/qwidget.html).
+
+## 布局管理器
+
+如何把组件组成连贯的带功能的gui? PyQt6有一些方法把组件放在form或者窗口上。比如可以
+使用`.resize()`和`.move()`方法赋予组件绝对尺寸和位置。但是这种方法有一些缺点:
+- 必须对每个组件的尺寸和位置进行计算
+- 对窗口的resize事件进行计算
+- 在窗口的布局发生改变时必须重做大部分计算
+
+有一种方法使用`.resizeEvent()` 来动态的计算组件的尺寸和位置。但是还是会遇到前面提到的问题。
+最有效的以及推荐的方法是使用布局管理器。可以缓解出问题的概率提升代码可读性。
+
+pyqt有3中基础的布局管理器类
+1. QHBoxLayout
+2. QVBoxLayout
+3. QGridLayout
+4. QFormLayout
+
+### `QHBoxLayout`
+`QHBoxLayout`从左到右排列组件:
+
+![](https://files.realpython.com/media/horizontal-layout.39d78929812f.png)
+
+下面是一个例子:
+
+```py
+# h_layout.py
+
+"""Horizontal layout example."""
+
+import sys
+
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QPushButton,
+    QWidget,
+)
+
+app = QApplication([])
+window = QWidget()
+window.setWindowTitle("QHBoxLayout")
+
+layout = QHBoxLayout()
+layout.addWidget(QPushButton("Left"))
+layout.addWidget(QPushButton("Center"))
+layout.addWidget(QPushButton("Right"))
+window.setLayout(layout)
+
+window.show()
+sys.exit(app.exec())
+```
+运行之后:
+
+![](https://files.realpython.com/media/h-layout.3471b0b63bc8.png)
+
+### `QVBoxLayout`
+
+`QVBoxLayout`以垂直的方式安排组件:
+
+![](https://files.realpython.com/media/vertical-layout.c173d779b79d.png)
+
+```py
+# v_layout.py
+
+"""Vertical layout example."""
+
+import sys
+
+from PyQt6.QtWidgets import (
+    QApplication,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+app = QApplication([])
+window = QWidget()
+window.setWindowTitle("QVBoxLayout")
+
+layout = QVBoxLayout()
+layout.addWidget(QPushButton("Top"))
+layout.addWidget(QPushButton("Center"))
+layout.addWidget(QPushButton("Bottom"))
+window.setLayout(layout)
+
+window.show()
+sys.exit(app.exec())
+```
+
+运行结果如下:
+![](https://files.realpython.com/media/v-layout.366271060ab3.png)
+
+### `QGridLayout`
+第三种是`QGridLayout`, 以行列的形式安排组件，每个组件是相对位置，比如:`(row, column)`,布局如下:
+
+![](https://files.realpython.com/media/grid-layout.3bbf850cab1e.png)
+
+一个例子如下:
+```py
+# g_layout.py
+
+"""Grid layout example."""
+
+import sys
+
+from PyQt6.QtWidgets import (
+    QApplication,
+    QGridLayout,
+    QPushButton,
+    QWidget,
+)
+
+app = QApplication([])
+window = QWidget()
+window.setWindowTitle("QGridLayout")
+
+layout = QGridLayout()
+layout.addWidget(QPushButton("Button (0, 0)"), 0, 0)
+layout.addWidget(QPushButton("Button (0, 1)"), 0, 1)
+layout.addWidget(QPushButton("Button (0, 2)"), 0, 2)
+layout.addWidget(QPushButton("Button (1, 0)"), 1, 0)
+layout.addWidget(QPushButton("Button (1, 1)"), 1, 1)
+layout.addWidget(QPushButton("Button (1, 2)"), 1, 2)
+layout.addWidget(QPushButton("Button (2, 0)"), 2, 0)
+layout.addWidget(
+    QPushButton("Button (2, 1) + 2 Columns Span"), 2, 1, 1, 2
+)
+window.setLayout(layout)
+
+window.show()
+sys.exit(app.exec())
+```
+
+在第26到第28行，传递了4个参数给`.addWidget()`，分别是行布局和列布局，用来创建
+多与一行或一列的布局。
+
+### `QFormLayout`
+
+最后一种是`QFormLayout`,这个类把组件放成两列布局，第一列一般以label的方式显示消息，
+第二列一般包含一些组件比如`QLineEdit`, `QComboBox`, `QSpinBox`.
+
+![](https://files.realpython.com/media/form-layout.6e168f74cdcd.png)
+
+下面是一个例子:
+```py
+# f_layout.py
+
+"""Form layout example."""
+
+import sys
+
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFormLayout,
+    QLineEdit,
+    QWidget,
+)
+
+app = QApplication([])
+window = QWidget()
+window.setWindowTitle("QFormLayout")
+
+layout = QFormLayout()
+layout.addRow("Name:", QLineEdit())
+layout.addRow("Age:", QLineEdit())
+layout.addRow("Job:", QLineEdit())
+layout.addRow("Hobbies:", QLineEdit())
+window.setLayout(layout)
+
+window.show()
+sys.exit(app.exec())
+```
+`QFormLayout` 有一个方便的方法叫做`.addRow()`,可以添加行。下图为代码运行结果:
+
+![](https://files.realpython.com/media/f-layout.5bc3a560d54c.png)
+
+## 对话框
+
+pyqt可以开发两种类型的GUI桌面应用，取决于用来创建form或者window的类。
+
+1. 窗口类型的应用，main窗口类继承自`QMainWindow`
+2. 对话框类型的应用，主窗口继承自`QDialog`
+
+对话框类型的窗口是一个独立的窗口作为主窗口。
+
+
+
+## 主窗口
+
+## 应用
+
+## 事件循环
+
+## 信号和slots
+

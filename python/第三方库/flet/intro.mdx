@@ -1,0 +1,62 @@
+---
+title: Intro
+slug: /python/flex
+sidebar_position: 1
+---
+
+# Intro
+
+通过使用flet controls可以构建基于flutter的GUI。flet不仅封装了flutter组件，还结合了一些小组件，隐藏了复杂性，
+有一些合理的默认值,确保在最方便的情况下创建app。
+
+下面是一个counter的例子:
+
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    page.title = "Flet counter example"
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+
+    txt_number = ft.TextField(value="0", text_align=ft.TextAlign.RIGHT, width=100)
+
+    def minus_click(e):
+        txt_number.value = str(int(txt_number.value) - 1)
+        page.update()
+
+    def plus_click(e):
+        txt_number.value = str(int(txt_number.value) + 1)
+        page.update()
+
+    page.add(
+        ft.Row(
+            [
+                ft.IconButton(ft.icons.REMOVE, on_click=minus_click),
+                txt_number,
+                ft.IconButton(ft.icons.ADD, on_click=plus_click),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+    )
+
+ft.app(main)
+```
+安装flet模块:
+```py
+pip install flet
+```
+运行程序:
+```py
+flet run counter.py
+```
+![win](https://flet.dev/img/docs/getting-started/flet-counter-windows.png)
+
+作为web运行:
+![](https://flet.dev/img/docs/getting-started/flet-counter-safari.png)
+
+## 安装
+
+flet需要python版本3.8往上。
+```sh
+pip install flet
+```

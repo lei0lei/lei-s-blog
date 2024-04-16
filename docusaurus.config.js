@@ -170,7 +170,7 @@ const config = {
             docsPluginId: 'ai',
             label: 'ai',
           },
-          {to: '/paper', label: 'paper', position: 'left'},
+          // {to: '/paper', label: 'paper', position: 'left'},
           {
             href: 'https://github.com/facebook/docusaurus',
             label: 'GitHub',

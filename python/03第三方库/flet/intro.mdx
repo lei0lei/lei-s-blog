@@ -49,11 +49,16 @@ pip install flet
 ```py
 flet run counter.py
 ```
-![win](https://flet.dev/img/docs/getting-started/flet-counter-windows.png)
+<p align="center">
+<img src="https://flet.dev/img/docs/getting-started/flet-counter-windows.png" alt="win" width="600"/>
+</p>
+
 
 作为web运行:
-![](https://flet.dev/img/docs/getting-started/flet-counter-safari.png)
 
+<p align="center">
+<img src="https://flet.dev/img/docs/getting-started/flet-counter-safari.png" alt="" width="600"/>
+</p>
 ## 安装
 
 flet需要python版本3.8往上。
@@ -160,7 +165,12 @@ def main(page: ft.Page):
 
 ft.app(target=main)
 ```
-![]https://flet.dev/img/docs/getting-started/controls-text.png()
+
+<p align="center">
+<img src="https://flet.dev/img/docs/getting-started/controls-text.png" alt="" width="600"/>
+</p>
+
+
 
 修改了control属性之后，UI会在下一次`page.update()`的时候更新：
 ```py
@@ -476,8 +486,10 @@ def main(page: ft.Page):
 
 ft.app(target=main)
 ```
+<p align="center">
+<img src="https://flet.dev/img/docs/custom-controls/composite-controls.gif" alt="" width="600"/>
+</p>
 
-![](https://flet.dev/img/docs/custom-controls/composite-controls.gif)
 
 下面的资源中有一些自定义的control:[community examples](https://github.com/flet-dev/examples/tree/main/python/community)
 ,[flet-contrib](https://github.com/flet-dev/flet-contrib/tree/main/flet_contrib)
@@ -587,8 +599,10 @@ ft.app(target=main)
 ### page route
 
 页面路由是应用url `#`后面的部分。
+<p align="center">
+<img src="https://flet.dev/img/docs/navigation-routing/page-address-route.png" alt="" width="600"/>
+</p>
 
-![](https://flet.dev/img/docs/navigation-routing/page-address-route.png)
 
 默认的应用路由如果不进行设置的话是`/`，所有的路由都以`/`为开始。
 
@@ -617,7 +631,10 @@ def main(page: ft.Page):
 
 ft.app(target=main, view=ft.AppView.WEB_BROWSER)
 ```
-![](https://flet.dev/img/docs/navigation-routing/page-route-change-event.gif)
+<p align="center">
+<img src="https://flet.dev/img/docs/navigation-routing/page-route-change-event.gif" alt="" width="600"/>
+</p>
+
 
 通过更新`page.route`属性可以程序中修改Route.
 
@@ -643,8 +660,9 @@ ft.app(target=main, view=ft.AppView.WEB_BROWSER)
 ### page views
 
 flet的page现在不仅仅是单一页面，而是像三明治一样层层的View的容器:
-
-![](https://flet.dev/img/docs/navigation-routing/page-views.svg)
+<p align="center">
+<img src="https://flet.dev/img/docs/navigation-routing/page-views.svg" alt="" width="600"/>
+</p>
 
 
 view的集合表示导航历史，page的`page.views`属性可以访问views集合。view list中的最后一个view会显示
@@ -827,4 +845,8 @@ def main(page: ft.Page):
 
 ft.app(main)
 ```
-![](https://flet.dev/img/docs/getting-started/user-control-countdown.gif)
+
+<p align="center">
+<img src="https://flet.dev/img/docs/getting-started/user-control-countdown.gif" alt="" width="600"/>
+</p>
+

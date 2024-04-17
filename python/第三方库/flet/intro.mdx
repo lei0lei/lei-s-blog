@@ -160,13 +160,671 @@ def main(page: ft.Page):
 
 ft.app(target=main)
 ```
+![]https://flet.dev/img/docs/getting-started/controls-text.png()
 
+修改了control属性之后，UI会在下一次`page.update()`的时候更新：
+```py
+t = ft.Text()
+page.add(t) # it's a shortcut for page.controls.append(t) and then page.update()
+
+for i in range(10):
+    t.value = f"Step {i}"
+    page.update()
+    time.sleep(1)
+```
+
+有一些controls是容器controls,比如前面遇到的`Page`，容器controls可以包含其他的controls,
+比如`Row` control:
+```py
+page.add(
+    ft.Row(controls=[
+        ft.Text("A"),
+        ft.Text("B"),
+        ft.Text("C")
+    ])
+)
+```
+```py
+page.add(
+    ft.Row(controls=[
+        ft.TextField(label="Your name"),
+        ft.ElevatedButton(text="Say my name!")
+    ])
+)
+```
+`page.update()`只会修改上次调用做出的改变，可以添加一些新的controls,移除一些，修改属性然后调用`page.update()`
+进行批量更新，比如:
+```py
+for i in range(10):
+    page.controls.append(ft.Text(f"Line {i}"))
+    if i > 4:
+        page.controls.pop(0)
+    page.update()
+    time.sleep(0.3)
+```
+一些controls有event handler,比如buttons,会根据用户输入进行响应，比如:
+`ElevatedButton.on_click`：
+```py
+def button_clicked(e):
+    page.add(ft.Text("Clicked!"))
+
+page.add(ft.ElevatedButton(text="Click me", on_click=button_clicked))
+```
+下面是更复杂的to-do的例子:
+```py
+import flet as ft
+
+def main(page):
+    def add_clicked(e):
+        page.add(ft.Checkbox(label=new_task.value))
+        new_task.value = ""
+        new_task.focus()
+        new_task.update()
+
+    new_task = ft.TextField(hint_text="Whats needs to be done?", width=300)
+    page.add(ft.Row([new_task, ft.ElevatedButton("Add", on_click=add_clicked)]))
+
+ft.app(target=main)
+```
+### `visible` 属性
+每个controls都有`visible`属性，默认为`true`,如果设置为false,会组织组件在page canvas上渲染。
+隐藏的controls无法通过键盘或者鼠标选中，也不会产生任何事件。
+
+### ``disabled`` 属性
+
+每个controls都有一个默认为false的disabled属性，这个属性经常用在数据输入controls,比如:
+`TextField`, `Dropdown`, `Checkbox`, `buttons`.如果父control设置了disabled,会递归的
+传递到所有子control.
+
+比如需要控制form的多个入口control,可以单独设置子controls的`disabled`：
+```py
+first_name = ft.TextField()
+last_name = ft.TextField()
+first_name.disabled = True
+last_name.disabled = True
+page.add(first_name, last_name)
+```
+也可以把controls放到container中然后设置某一列的disabled.
+```py
+first_name = ft.TextField()
+last_name = ft.TextField()
+c = ft.Column(controls=[
+    first_name,
+    last_name
+])
+c.disabled = True
+page.add(c)
+```
+
+### Buttons
+
+`Button`在点击的时候会产生`click`事件：
+```py
+btn = ft.ElevatedButton("Click me!")
+page.add(btn)
+```
+
+### Event handlers
+
+所有controls产生的事件都会回送给脚本，如何来响应这些事件?
+下面是Counter app的Button：
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    page.title = "Flet counter example"
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+
+    txt_number = ft.TextField(value="0", text_align="right", width=100)
+
+    def minus_click(e):
+        txt_number.value = str(int(txt_number.value) - 1)
+        page.update()
+
+    def plus_click(e):
+        txt_number.value = str(int(txt_number.value) + 1)
+        page.update()
+
+    page.add(
+        ft.Row(
+            [
+                ft.IconButton(ft.icons.REMOVE, on_click=minus_click),
+                txt_number,
+                ft.IconButton(ft.icons.ADD, on_click=plus_click),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+    )
+
+ft.app(target=main)
+```
+
+### Textbox
+
+flet提供了很多的controls来构建forms：TextField, Checkbox, Dropdown, ElevatedButton.
+
+```py
+import flet as ft
+
+def main(page):
+    def btn_click(e):
+        if not txt_name.value:
+            txt_name.error_text = "Please enter your name"
+            page.update()
+        else:
+            name = txt_name.value
+            page.clean()
+            page.add(ft.Text(f"Hello, {name}!"))
+
+    txt_name = ft.TextField(label="Your name")
+
+    page.add(txt_name, ft.ElevatedButton("Say hello!", on_click=btn_click))
+
+ft.app(target=main)
+```
+
+### Checkbox
+
+```py
+import flet as ft
+
+
+def main(page):
+    def checkbox_changed(e):
+        output_text.value = (
+            f"You have learned how to ski :  {todo_check.value}."
+        )
+        page.update()
+
+    output_text = ft.Text()
+    todo_check = ft.Checkbox(label="ToDo: Learn how to use ski", value=False, on_change=checkbox_changed)
+    page.add(todo_check, output_text)
+
+ft.app(target=main)
+```
+
+### Dropdown
+
+```py
+import flet as ft
+
+
+def main(page: ft.Page):
+    def button_clicked(e):
+        output_text.value = f"Dropdown value is:  {color_dropdown.value}"
+        page.update()
+
+    output_text = ft.Text()
+    submit_btn = ft.ElevatedButton(text="Submit", on_click=button_clicked)
+    color_dropdown = ft.Dropdown(
+        width=100,
+        options=[
+            ft.dropdown.Option("Red"),
+            ft.dropdown.Option("Green"),
+            ft.dropdown.Option("Blue"),
+        ],
+    )
+    page.add(color_dropdown, submit_btn, output_text)
+
+ft.app(target=main)
+```
 
 ## 自定义controls
 
+使用python OOP可以结合现存的flet controls创建复用的UI组件。
+
+最简单的自定义control是styled control, 在app中会多次使用的有特定颜色和行为的Button.
+
+要创建styled AbortController,需要在python中创建继承自需要自定义的control的新类，这种
+情况下是`OutlinedButton` ：
+
+```py
+class MyButton(ft.OutlinedButton)
+    def __init__(self, text):
+        super().__init__()
+        self.bgcolor = ft.colors.ORANGE_300
+        self.color = ft.colors.GREEN_800
+        self.text = text     
+```
+
+这个control中使用构造器定义属性，事件和传递自定义数据，一定要调用`super().__init__()`来
+访问父类的属性和方法。
+
+现在就可以使用这个自定义的control：
+```py
+import flet as ft
+
+def main(page: ft.Page):
+
+    page.add(MyButton(text="OK"), MyButton(text="Cancel"))
+
+ft.app(target=main)
+
+```
+像属性一样，可以传递event handler作为参数给类构造器:
+```py
+import flet as ft
+
+class MyButton(ft.ElevatedButton):
+    def __init__(self, text, on_click):
+        super().__init__()
+        self.bgcolor = ft.colors.ORANGE_300
+        self.color = ft.colors.GREEN_800
+        self.text = text
+        self.on_click = on_click
+
+def main(page: ft.Page):
+
+    def ok_clicked(e):
+        print("OK clicked")
+    
+    def cancel_clicked(e):
+        print("Cancel clicked")
+
+    page.add(
+        MyButton(text="OK", on_click=ok_clicked),
+        MyButton(text="Cancel", on_click=cancel_clicked),
+    )
+
+ft.app(target=main)
+```
+
+### 组合controls
+从容器controls比如Column,Row,Stack甚至View中派生controls来构造组合controls.
+下面是一个Task control：
+```py
+import flet as ft
+class Task(ft.Row):
+    def __init__(self, text):
+        super().__init__()
+        self.text_view = ft.Text(text)
+        self.text_edit = ft.TextField(text, visible=False)
+        self.edit_button = ft.IconButton(icon=ft.icons.EDIT, on_click=self.edit)
+        self.save_button = ft.IconButton(
+            visible=False, icon=ft.icons.SAVE, on_click=self.save
+        )
+        self.controls = [
+            ft.Checkbox(),
+            self.text_view,
+            self.text_edit,
+            self.edit_button,
+            self.save_button,
+        ]
+
+    def edit(self, e):
+        self.edit_button.visible = False
+        self.save_button.visible = True
+        self.text_view.visible = False
+        self.text_edit.visible = True
+        self.update()
+
+    def save(self, e):
+        self.edit_button.visible = True
+        self.save_button.visible = False
+        self.text_view.visible = True
+        self.text_edit.visible = False
+        self.text_view.value = self.text_edit.value
+        self.update()
+
+def main(page: ft.Page):
+
+    page.add(
+        Task(text="Do laundry"),
+        Task(text="Cook dinner"),
+    )
+
+
+ft.app(target=main)
+```
+
+![](https://flet.dev/img/docs/custom-controls/composite-controls.gif)
+
+下面的资源中有一些自定义的control:[community examples](https://github.com/flet-dev/examples/tree/main/python/community)
+,[flet-contrib](https://github.com/flet-dev/flet-contrib/tree/main/flet_contrib)
+
+### 生命周期方法
+自定义的control提供了生命周期hook方法。
+
+#### `build()`
+
+`build()`方法会在control创建的时候调用，并且会对`self.page`赋值。如果有个自定义的controls
+需要实现这样的逻辑：由于需要访问self.page导致无法在control 的构造器内执行。比如:
+为自适应app根据self.pageXOffset.platform来选择正确的icon.
+
+#### `did_mount()`
+`did_mount()`方法在control被添加到page赋予了临时的UID之后调用.如果需要实现这样的逻辑:在control被
+添加到page之后进行执行，覆盖`did_mount()`。比如[weather widget](https://github.com/flet-dev/examples/tree/main/python/community/weather_widget)
+.
+
+#### `before_update()`
+
+`before_update()`会在control每次更新的时候进行调用，一定不要在`before_update()`中调用`update()`方法。
+
+### isolated control
+
+自定义的control都会有默认为`False`的`is_isolated`属性。如果设置为True,contorl会从外部的布局中
+独立出来，在父control调用`update()`方法时，这个control本身会被更新但是对control孩子的改变不会包含在
+更新摘要里面。独立的control需要调用`self.update()`将改变推送给page.
+
+如果自定义的control在自身的类方法中调用self.update(),这个control应该是独立的。
+
+前面Task的例子应该是独立的:
+```py
+class Task(ft.Row):
+    def __init__(self, text):
+        super().__init__()
+        self.isolated = True
+```
+
 ## 自适应app
 
-## 路由和导航
+一些control会用`adaptive`属性来自动适应平台。在flet中，可以从control中派生出来
+自定义的control.下面的例子中创建了AdaptiveNavigationDestination control来提供
+ios和安卓下不同的外观。
 
+```py
+class AdaptiveNavigationDestination(ft.NavigationDestination):
+    def __init__(self, ios_icon, android_icon, label):
+        super().__init__()
+        self._ios_icon = ios_icon
+        self._android_icon = android_icon
+        self.label = label
+
+    def build(self):
+        # we can check for platform in build method because self.page is known
+        self.icon = (
+            self._ios_icon
+            if self.page.platform == ft.PagePlatform.IOS
+            or self.page.platform == ft.PagePlatform.MACOS
+            else self._android_icon
+        )
+```
+
+在`NavigationBar`中使用:
+
+```py
+import flet as ft
+from adaptive_navigation_destination import AdaptiveNavigationDestination
+
+def main(page):
+
+    page.adaptive = True
+
+    page.navigation_bar = ft.NavigationBar(
+        selected_index=2,
+        destinations=[
+            AdaptiveNavigationDestination(
+                ios_icon=ft.cupertino_icons.PERSON_3_FILL,
+                android_icon=ft.icons.PERSON,
+                label="Contacts",
+            ),
+            AdaptiveNavigationDestination(
+                ios_icon=ft.cupertino_icons.CHAT_BUBBLE_2,
+                android_icon=ft.icons.CHAT,
+                label="Chats",
+            ),
+            AdaptiveNavigationDestination(
+                ios_icon=ft.cupertino_icons.SETTINGS,
+                android_icon=ft.icons.SETTINGS,
+                label="Settings",
+            ),
+        ],
+    )
+
+    page.update()
+
+
+ft.app(target=main)
+```
+
+## 路由和导航
+路由和导航是SPA应用的重要特征，可以将应用的界面组织成虚拟的page,然后通过应用的URL
+进行导航来反映应用的当前状态。
+
+将导航和路由添加到flet非常麻烦因为实现基于navigator2.0的flutter api,需要使用page and views
+替换掉flet的page抽象。
+
+### page route
+
+页面路由是应用url `#`后面的部分。
+
+![](https://flet.dev/img/docs/navigation-routing/page-address-route.png)
+
+默认的应用路由如果不进行设置的话是`/`，所有的路由都以`/`为开始。
+
+页面路由可以通过读取page.route属性来进行获取。比如:
+
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    page.add(ft.Text(f"Initial route: {page.route}"))
+
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)
+```
+URL中的路由每次改变的时候flet都会调用`page.on_route_change` event handler：
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    page.add(ft.Text(f"Initial route: {page.route}"))
+
+    def route_change(e: ft.RouteChangeEvent):
+        page.add(ft.Text(f"New route: {e.route}"))
+
+    page.on_route_change = route_change
+    page.update()
+
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)
+```
+![](https://flet.dev/img/docs/navigation-routing/page-route-change-event.gif)
+
+通过更新`page.route`属性可以程序中修改Route.
+
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    page.add(ft.Text(f"Initial route: {page.route}"))
+
+    def route_change(e: ft.RouteChangeEvent):
+        page.add(ft.Text(f"New route: {e.route}"))
+
+    def go_store(e):
+        page.route = "/store"
+        page.update()
+
+    page.on_route_change = route_change
+    page.add(ft.ElevatedButton("Go to Store", on_click=go_store))
+
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)
+```
+
+### page views
+
+flet的page现在不仅仅是单一页面，而是像三明治一样层层的View的容器:
+
+![](https://flet.dev/img/docs/navigation-routing/page-views.svg)
+
+
+view的集合表示导航历史，page的`page.views`属性可以访问views集合。view list中的最后一个view会显示
+在page上，要模拟page之间的切换，修改page.route，然后在`page.view`列表的最后添加一个新的View.
+
+从集合中弹出最后一个view然后在`page.on_view_pop` view handler中修改路由为前一个来返回。
+
+### build views on route change
+
+要想导航可靠，在程序的某个地方必须根据当前路由构建view列表。换句话，导航的历史栈必须是一个路由的函数，
+这个地方是`page.on_route_change` event handler.
+
+接下来是一个完整的在两个页面之间导航的例子:
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    page.title = "Routes Example"
+
+    def route_change(route):
+        page.views.clear()
+        page.views.append(
+            ft.View(
+                "/",
+                [
+                    ft.AppBar(title=ft.Text("Flet app"), bgcolor=ft.colors.SURFACE_VARIANT),
+                    ft.ElevatedButton("Visit Store", on_click=lambda _: page.go("/store")),
+                ],
+            )
+        )
+        if page.route == "/store":
+            page.views.append(
+                ft.View(
+                    "/store",
+                    [
+                        ft.AppBar(title=ft.Text("Store"), bgcolor=ft.colors.SURFACE_VARIANT),
+                        ft.ElevatedButton("Go Home", on_click=lambda _: page.go("/")),
+                    ],
+                )
+            )
+        page.update()
+
+    def view_pop(view):
+        page.views.pop()
+        top_view = page.views[-1]
+        page.go(top_view.route)
+
+    page.on_route_change = route_change
+    page.on_view_pop = view_pop
+    page.go(page.route)
+
+
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)
+
+```
+### route template
+`TemplateRoute`是基于repath库的功能类，可以匹配类似ExpressJS的录用以及解析参数，比如
+`/account/:account_id/orders/:order_id`.
+
+`TemplateRoute`和路由改变事件结合的很好:
+```py
+troute = TemplateRoute(page.route)
+
+if troute.match("/books/:id"):
+    print("Book view ID:", troute.id)
+elif troute.match("/account/:account_id/orders/:order_id"):
+    print("Account:", troute.account_id, "Order:", troute.order_id)
+else:
+    print("Unknown route")
+```
+
+### 用于web的URL策略
+
+flet web app支持两种基于URL的路由的配置方式。
+- path 路径没有井号 `fletapp.dev/path/to/view`
+- hash 路径有井号 `fletapp.dev/#/path/to/view`
+
+要改变url策略使用flet.app()方法的`route_url_strategy`参数。
+
+```py
+ft.app(target=main, route_url_strategy="hash")
+```
+flet 服务器的url策略可以通过`FLET_ROUTE_URL_STRATEGY`环境变量配置。设置为`path `或者`hash`.
 
 ## async
+
+flet app可以写成async形式的。默认情况下flet会在单独的线程中执行control的event handler.但是这可能会
+造成cpu低效。asyncio允许在一个单独线程中实现并发，在coroutine中切换执行上下文。对于使用pyodide发布为静态
+网站比较有用。
+
+可以将flet app的`main`方法标记为`async`,然后在其中使用asyncio.
+
+```py
+import flet as ft
+
+async def main(page: ft.Page):
+    await asyncio.sleep(1)
+    page.add(ft.Text("Hello, async world!"))
+
+ft.app(main)
+```
+
+如果flet app是一个更大的应用的一部分，可以使用`await ft.app_async(main)`,从async代码中调用。
+
+### Control event handlers
+
+control event handler既可以是sync也可以是async.
+
+如果一个handler不调用任何的async方法，这就是一个普通的sync方法:
+```py
+def page_resize(e):
+    print("New page size:", page.window_width, page.window_height)
+
+page.on_resize = page_resize
+```
+
+如果一个handler调用了async逻辑，那它也应该是async.
+
+```py
+async def main(page: ft.Page):
+
+    async def button_click(e):
+        await some_async_method()
+        page.add(ft.Text("Hello!"))
+
+    page.add(ft.ElevatedButton("Say hello!", on_click=button_click))
+
+ft.app(main)
+```
+python中没有async lambda,但是如果有lambda envent handler会很方便。
+```py
+page.on_error = lambda e: print("Page error:", e.data)
+```
+
+### sleep()
+如果要在async flet app中延迟代码执行，应该使用asyncio.sleep()而不是time.sleep(),比如:
+```py
+import asyncio
+import flet as ft
+
+def main(page: ft.Page):
+    async def button_click(e):
+        await asyncio.sleep(1)
+        page.add(ft.Text("Hello!"))
+
+    page.add(
+        ft.ElevatedButton("Say hello with delay!", on_click=button_click)
+    )
+
+ft.app(main)
+```
+### 线程
+如果要在后台运行某些东西使用page.run_task().比如一个countdown自定义control,在后台进行更新，可以实现为:
+```py
+import asyncio
+import flet as ft
+
+class Countdown(ft.Text):
+    def __init__(self, seconds):
+        super().__init__()
+        self.seconds = seconds
+
+    def did_mount(self):
+        self.running = True
+        self.page.run_task(self.update_timer)
+
+    def will_unmount(self):
+        self.running = False
+
+    async def update_timer(self):
+        while self.seconds and self.running:
+            mins, secs = divmod(self.seconds, 60)
+            self.value = "{:02d}:{:02d}".format(mins, secs)
+            self.update()
+            await asyncio.sleep(1)
+            self.seconds -= 1
+
+def main(page: ft.Page):
+    page.add(Countdown(120), Countdown(60))
+
+ft.app(main)
+```
+![](https://flet.dev/img/docs/getting-started/user-control-countdown.gif)

@@ -107,7 +107,59 @@ flet create --template counter .
 
 ## 运行flet app
 
+flet的运行方式是桌面或者web应用，使用`flet run`命令。
+
+作为桌面应用使用:
+```sh
+flet run
+```
+这会自动运行当前目录的main.如果需要运行其他位置的文件，传入相对路径或者绝对路径运行:
+```sh
+flet run [script]
+```
+
+使用web app运行:
+```sh
+flet run --web [script]
+```
+如果需要换端口:
+```sh
+flet run --web --port 8000 app.py
+```
+
+默认情况下，flet会监控运行的脚本文件，然后在文件修改保存的时候重载app,但是不会监控其他文件。
+要监控相同目录的所有文件使用命令:
+
+```sh
+poetry run flet run -d [script]
+```
+
+要监控嵌套的所有文件，运行:
+```sh
+poetry run flet run -d -r [script]
+```
+关于详细的run命令，[查看](https://flet.dev/docs/reference/cli/run)
+
+
 ## flet controls
+flet的用户接口由controls构成(有的框架会叫作widgets),要让一个controls可见，必须添加到`Page`或者其他controls内部。
+`Page`是最顶层的control,最后所有嵌套的controls会表示为一颗树，`Page`就是root.
+
+controls是普通的python 类，control的构建可以通过给构造器的属性提供参数值，比如:
+```py
+t = ft.Text(value="Hello, world!", color="green")
+```
+要把control显示到page上，将其添加到Page的control列表中，然后调用`page.update()`将page改变传给客户端。
+```py
+import flet as ft
+
+def main(page: ft.Page):
+    t = ft.Text(value="Hello, world!", color="green")
+    page.controls.append(t)
+    page.update()
+
+ft.app(target=main)
+```
 
 
 ## 自定义controls

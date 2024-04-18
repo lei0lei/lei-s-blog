@@ -338,12 +338,218 @@ sys.exit(app.exec())
 
 在python外面无法中止QRunnable对象，可以创建一个全局的布尔值，然后在QRunnable的子类中进行检查来终止。
 
-
-
-
 ## Worker qthread通信
 
+在使用pyqt进行多线程编程的时候，可能需要在主线程和工作线程间建立通信，这样可以得到从工作线程的反馈
+来更新UI或者把数据发送给线程或者中断执行等。
+
+pyqt的信号和slot机制给线程间通信提供了健壮并且安全的方式。另一方面可能需要在工作线程之间建立通信，
+比如共享的buffer数据或者其他资源，这种情况下需要确保避免同时访问。
+### 使用信号和slots
+线程安全的对象是指可以被多个线程同时访问的对象，并且总是可靠的。pyqt的信号和slots是线程安全的，可以创建
+线程间通信并在线程间共享通信。
+
+线程产生的信号可以连接到该线程或者不同的线程，这表示可以在一个线程内执行代码来响应同一线程产生的信号或者
+另一个线程产生的信号。
+
+响应式GUI例子中，使用信号和slots机制来在线程间建立通信，比如把worker的progress信号连接到应用的`.reportProgress()`slot
+progress有一个表示长期运行的任务的整数值，`.reportProgress()`收到这个值作为参数，这样可以更新Long-Running Step label.
+
+### 线程间共享通信
+多线程一般需要多个线程访问同一份数据和资源，如果多个线程并行访问相同的数据和资源，并且至少其中之一写入或者
+改变了共享资源，可能会面临程序崩溃，内存或者数据冲突，死锁等乱七八糟的问题。
+
+有至少两种方法来保护数据或者资源:
+1. 用下面的方式避免共享状态
+    - immutable objects
+    - thread-local storage
+    - reentrant code
+2. 使用下面的方法同步访问共享数据
+    - atomic operation
+    - mutual exclusion
+
+如果需要共享资源，需要使用第二种方法。原子操作在单个执行步出现，因此无法被其他线程打断，确保
+只有一个线程在给定事件更改资源。
+
+:::note
+[CPython如何管理原子操作的?](https://docs.python.org/3/faq/library.html#what-kinds-of-global-value-mutation-are-thread-safe)
+:::
+
+mutual exclusion是多线程中常用的模式。通过locks来保护数据和资源的访问，这是一种同步机制，给定时间只允许一个线程访问资源。
+比如如果线程A需要改更新全局变量，就会在该变量上得到一个锁，防止线程B同时访问变量。线程A完成
+变量更新之后，释放锁,线程B才可以访问变量。
+
+使用锁会有额外的花费导致性能下降。线程同步强制大多数线程等待直到某个资源可用，无法从并行执行上得到好处。
+
+pyqt有一些方便的类来在并行访问中保护资源和数据:
+
+- QMutex是一个lock class来管理mutual exclusion,
+- QReadWriteLock类似于QMutex,但是会区分读写访问，多个线程可以同时通过只读的方式访问共享资源。如果线程需要
+写资源，所有线程都会阻塞直到写完成。
+- QSemaphore是复数版本的QMutex,可以保护一组唯一的资源，如果信号量保护了n个资源，尝试锁定n+1个资源，就会
+阻塞信号量，防止访问资源。
+
+### QMutex保护共享数据
+
+QMutex常用来防止多线程的pyqt应用同时访问共享的数据和资源。接下来是一个QMutex的例子，管理一个银行账户，两个人可以
+在任何事件取钱，这种情况下需要在并行访问的时候保护账户，不然可以取比账户更多的钱。
+
+受限import一些内容:
+```py
+import logging
+import random
+import sys
+from time import sleep
+
+from PyQt5.QtCore import QMutex, QObject, QThread, pyqtSignal
+from PyQt5.QtWidgets import (
+    QApplication,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+logging.basicConfig(format="%(message)s", level=logging.INFO)
+
+balance = 100.00
+mutex = QMutex()
+```
+balance是一个放余额的全局变量，mutex是QMutex对象，使用其来防止多个线程同时访问balance.
+
+接下来创建QObject的子类来放取钱逻辑的代码:
+```py
+class AccountManager(QObject):
+    finished = pyqtSignal()
+    updatedBalance = pyqtSignal()
+
+    def withdraw(self, person, amount):
+        logging.info("%s wants to withdraw $%.2f...", person, amount)
+        global balance
+        mutex.lock()
+        if balance - amount >= 0:
+            sleep(1)
+            balance -= amount
+            logging.info("-$%.2f accepted", amount)
+        else:
+            logging.info("-$%.2f rejected", amount)
+        logging.info("===Balance===: $%.2f", balance)
+        self.updatedBalance.emit()
+        mutex.unlock()
+        self.finished.emit()
+```
+
+这里首先定义了两个信号:
+1. finished表示何时类处理任务
+2. updatedBalance表示何时balance进行更新
+
+然后定义`.withdraw()`,在这个方法中:
+- 显示取钱的人
+- 使用golbal语句从`.withdraw()`中使用balance变量。
+- 在mutex上调用.lock()来获得lock，保护balance
+- 检查balance是否允许取钱
+- 调用sleep模拟操作所需的时常
+- 减小取出的钱
+- 显示是否允许交易的信息
+- 铲射高updatedBalance信号表示balance已经被更新
+- 释放锁让其他线程访问balance
+- 产生finished信号表示操作完成
+
+下面是UI:
+```py
+class Window(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setupUi()
+
+    def setupUi(self):
+        self.setWindowTitle("Account Manager")
+        self.resize(200, 150)
+        self.centralWidget = QWidget()
+        self.setCentralWidget(self.centralWidget)
+        button = QPushButton("Withdraw Money!")
+        button.clicked.connect(self.startThreads)
+        self.balanceLabel = QLabel(f"Current Balance: ${balance:,.2f}")
+        layout = QVBoxLayout()
+        layout.addWidget(self.balanceLabel)
+        layout.addWidget(button)
+        self.centralWidget.setLayout(layout)
+```
+
+```py
+class Window(QMainWindow):
+    # Snip...
+    def createThread(self, person, amount):
+        thread = QThread()
+        worker = AccountManager()
+        worker.moveToThread(thread)
+        thread.started.connect(lambda: worker.withdraw(person, amount))
+        worker.updatedBalance.connect(self.updateBalance)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        return thread
+```
+
+这里的代码为每个人创建了一个线程，将线程的started信号和worker的.withdraw()进行关联，
+线程启动时会自动运行方法。这里还把updatedBalance信号和.updateBalance()关联，更新当前的
+balance.
+
+```py
+class Window(QMainWindow):
+    # Snip...
+    def updateBalance(self):
+        self.balanceLabel.setText(f"Current Balance: ${balance:,.2f}")
+```
+
+接下来为两个人创建线程:
+```py
+class Window(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setupUi()
+        self.threads = []
+
+    # Snip...
+    def startThreads(self):
+        self.threads.clear()
+        people = {
+            "Alice": random.randint(100, 10000) / 100,
+            "Bob": random.randint(100, 10000) / 100,
+        }
+        self.threads = [
+            self.createThread(person, amount)
+            for person, amount in people.items()
+        ]
+        for thread in self.threads:
+            thread.start()
+```
+首先给Windown的初始化器添加.thread作为实例属性，这个变量存放线程列表防止.startThreads()
+返回后脱离作用域，然后定义.startThread()创建两个人，每人一个线程。
+
+
+在startThread()中进行了下面操作:
+- 清楚已经摧毁的线程
+- 创建字典存放两个人
+- 每人一个线程
+- for循环中启动线程
+
+
+<p align="center">
+<img src="https://realpython.com/cdn-cgi/image/width=653,format=auto/https://files.realpython.com/media/account-manager-example.ed39ea2ca678.gif" alt="" width="400"/>
+</p>
 
 
 
 ## 总结
+一些经验之谈:
+- 避免在主线程中有长期运行的任务
+- 使用 QObject.moveToThread()和QThread对象创建工作线程
+- 如果需要管理工作线程池，使用QThreadPool和QRunnable
+- 使用信号和slots来创建安全的线程间通信
+- 使用QMutex,QReadWriteLock或者QSemaphore来防止线程同时访问共享数据和资源
+- 在终止线程之前一定要解锁或者释放QMutex,QReadWriteLock或者QSemaphore
+- 使用多个return语句在函数的所有可能的执行路径上释放锁
+- 不要在工作线程内创建访问或者更新GUI元素或者组件
+- 不要把有父子关系的QObject移动到不同的线程内

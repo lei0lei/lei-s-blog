@@ -1,0 +1,349 @@
+---
+title: QThread
+slug: /python/pyqt/qthread
+sidebar_position: 2
+---
+
+pyqt gui应用有一个主线程在一直执行来运行事件循环和GUI。如果在这个线程中运行了
+一个长期运行的任务，GUI就会在任务终止前一直被占用，在这期间用户无法和UI交互。
+pyqt解决的方法是QThread.
+
+扩展阅读:
+- [pyqt-caculator](https://realpython.com/python-pyqt-gui-calculator/)
+- [python threading](https://realpython.com/intro-to-python-threading/)
+
+长期运行的任务会占用GUI应用的主线程，比如:
+
+
+<p align="center">
+<img src="https://realpython.com/cdn-cgi/image/width=302,format=auto/https://files.realpython.com/media/pyqt-freezing-gui.1a899db536e8.png" alt="win" width="400"/>
+</p>
+
+我们需要计算按钮的总点击次数，点击long running task之后会有一个占用很长时间的任务，
+第一中方法使用单线程执行:
+```py
+import sys
+from time import sleep
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (
+    QApplication,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+class Window(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.clicksCount = 0
+        self.setupUi()
+
+    def setupUi(self):
+        self.setWindowTitle("Freezing GUI")
+        self.resize(300, 150)
+        self.centralWidget = QWidget()
+        self.setCentralWidget(self.centralWidget)
+        # Create and connect widgets
+        self.clicksLabel = QLabel("Counting: 0 clicks", self)
+        self.clicksLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.stepLabel = QLabel("Long-Running Step: 0")
+        self.stepLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.countBtn = QPushButton("Click me!", self)
+        self.countBtn.clicked.connect(self.countClicks)
+        self.longRunningBtn = QPushButton("Long-Running Task!", self)
+        self.longRunningBtn.clicked.connect(self.runLongTask)
+        # Set the layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.clicksLabel)
+        layout.addWidget(self.countBtn)
+        layout.addStretch()
+        layout.addWidget(self.stepLabel)
+        layout.addWidget(self.longRunningBtn)
+        self.centralWidget.setLayout(layout)
+
+    def countClicks(self):
+        self.clicksCount += 1
+        self.clicksLabel.setText(f"Counting: {self.clicksCount} clicks")
+
+    def reportProgress(self, n):
+        self.stepLabel.setText(f"Long-Running Step: {n}")
+
+    def runLongTask(self):
+        """Long-running task in 5 steps."""
+        for i in range(5):
+            sleep(1)
+            self.reportProgress(i + 1)
+
+app = QApplication(sys.argv)
+win = Window()
+win.show()
+sys.exit(app.exec())
+```
+
+`.setupUi()`创建了所有需要的图形组件，点击下方的long running按钮之后会有一个需要5s的任务，
+但是如果在下方按钮运行期间点击上方按钮，ui会没有响应，上方按钮无法响应点击事件，上方的label
+也不会改变。一直到下方任务运行完，上方状态才发生改变，也就是说程序被冻结了10s.这是由于主线程被
+阻塞了，常见的解决方式是使用worker thread.
+
+
+<p align="center">
+<img src="https://realpython.com/cdn-cgi/image/width=325,format=auto/https://files.realpython.com/media/pyqt-freezing-gui-animation.03895ab5576e.gif" alt="win" width="400"/>
+</p>
+
+## 多线程
+
+有时需要把程序分为几个小的子程序或者tasks,然后在几个线程中运行，这样也许可以使程序运行更快，或者防止
+程序在执行长时间运行的时候没有响应。thread具有单独的执行流，在大多数操作系统中，线程是进程的组件，
+进程可以同时执行多个线程。每个进程是程序或者应用实例。
+
+我们可以有很多的线程数，确定合适的线程数，如果正在处理I/O受限的线程，线程数会被限制到可用的系统资源。
+如果是CPU受限的，比cpu核数小的线程数会比较好。
+
+构建可以使用不同线程运行多个不同任务的程序又叫多线程编程。多线程可以同时运行几个任务，但是并不总是这样，
+至少有两个因素限制着同时运行多个线程:
+1. CPU
+2. 编程语言
+
+如果是单核机器，就没法同时运行多个线程，有一个特例是使用操作系统提供的schedule功能来模拟多线程执行。
+这样宏观来看是并行的但是同一时刻只有一个线程。
+
+如果是多核机器或者计算机集群，可以同时运行多个线程，这样变成语言就变成重要的影响因素。
+
+一些编程语言有内部的组件会禁止真正的多线程执行，这样线程表现为并行运行是受益于task调度系统。
+
+多线程程序实际上很难写，很难维护以及debug.因为线程间共享资源，数据访问同步和协调线程执行很复杂
+下面是一些可能产生的问题:
+
+- race condition: 当由于事件的顺序不可预测时应用的行为也发生变化。通常两个或者多个线程在没有
+合适的同步就访问共享资源就会导致这种情况。比如从不同线程读写内存，如果读写操作以不同顺序发生
+就会导致这个问题。
+
+- Deadlock：当线程一直等到被locked的资源释放时会发生。比如一个线程lock资源使用完后也没有unlock,
+另一个线程就无法使用然后陷入一直等待。deadlock还会发生在A等待线程B unlock资源然后B等待线程A
+unlock一个不同的资源，两个线程就会一直互相等待下去。
+
+- Livelock: 两个或者多个线程重复性的互相响应互相的动作。Livelock的线程由于一直互相响应无法进行下
+一步操作，但是这些线程并不处于blocked或者dead状态。
+
+- starvation: 当一个进程永远无法访问需要的资源导致无法完成任务时。比如一个进程无法获得cpu时间，就无法
+完成任务。
+
+在构建多线程应用时，需要在并发写或者状态改变访问时要格外小心，换句话说需要阻止多个线程同时访问给定资源。
+
+多线程程序至少有以下几种好处:
+1. 利用多核处理器加速程序
+2. 把程序变成子任务来简化应用
+3. 让应用保持响应，防止长时间运行的任务阻塞程序
+
+在cpython中，线程不会并行运行，因为GIL.
+
+## qthread
+pyqt使用qthread来创建多线程应用，pyqt有两种应用:
+
+- 主线程
+- 工作线程
+主线程总是存在，应用和GUI在其中运行。工作线程取决于应用的处理需求，比如应用有一个
+需要运行很长时间的任务。需要避免gui被阻塞。
+
+### 主线程
+主线程又叫做GUI线程，因为他处理所有的组件和其他的GUI元素。python在运行应用的时候就会启动
+这个线程。在QApplication 对象上调用.exec()之后主线程就会启动事件循环。
+
+默认情况下，发生在应用主线程的所有事件或者任务包括用户在GUI本身上的事件都是同步或者一个接一个运行的。
+如果有一个长时间运行的任务，应用需要等待任务完成，期间GUI不响应。
+
+需要注意必须在GUI线程中创建和更新所有组件。但是可以在工作线程中执行其他长期运行的任务然后把结果反馈
+给GUI组件，GUI就像消费者一样从实际的工作线程中得到信息。
+
+### 工作线程
+
+pyqt应用中可以创建任意多的工作线程。使用QThread来创建工作线程，每个工作线程有自己的事件循环，支持pyqt的
+signal and slot机制来和主线程通信。如果在特定线程中从继承自QObject的类中的对象，这个对象就属于这个线程。
+其子类也属于这个线程。
+
+Qthread本身不是一个线程，这是一个操作系统线程的封装器，真正的线程对象是在`QThread.start()`中创建的。
+
+Qthread提供了高层的API来管理线程，包括信号，比如.started()和.finished(),在线程启动和结束的时候产生。还包含
+方法和slots比如.start(),.wait(),.exit(),.quit(),.isFinished()以及.isRunning().
+
+像其他的threading方案一样，使用QThread必须保护数据和资源，不然会有死锁，数据冲突等问题。
+
+
+## qthread vs python thread
+
+python标准库也提供了threading模块来实现多线程，到底该用哪个?一般在python应用中使用threading,
+但是如果使用pyqt来构建GUI应用qthread会更好。一般pyqt的线程有以下好处:
+- 线程相关的类跟pyqt结构集成紧密
+- worker thread有其自己的事件循环，可以处理事件。
+- 线程内部通信可以使用signal跟slot
+
+## 使用qthread 防止ui卡住
+
+在GUI应用中使用线程通常就是把长期运行的任务交给工作线程，这样UI还能响应用户的交互，
+pyqt中使用QThread来管理工作线程。
+
+QThread创建工作线程主要有两种方式:
+- 直接实例化QThread创建QObject worker.然后用这个线程作为参数在worker上调用`.moveToThread()`,
+worker必须包含执行特定任务所需要的功能。
+- 创建QThread的子类然后重新实现`.run()`。`.run()`的实现必须包含需要的功能。
+
+实例化QThread提供了并行的事件循环，事件循环让线程拥有的对象在slots上接受信号，这些slots在线程内执行。
+
+换句话说，QThread的子类可以在事件循环之外运行并行代码，这种方法可以通过明确调用exec()创建事件循环。
+
+要使用第一种方式需要以下步骤:
+1. 创建QObject的子类来准备worker对象并且把长期运行的任务放进去
+2. 创建worker类的新实例
+3. 创建QThread实例
+4. 通过调用`.moveToThread(thread)`把worker对象放到新创建的线程
+5. 把需要的信号和slots创建关联来创建线程通信
+6. 在QThread对象上调用`.start()`
+
+```py
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
+# Snip...
+
+# Step 1: Create a worker class
+class Worker(QObject):
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
+
+    def run(self):
+        """Long-running task."""
+        for i in range(5):
+            sleep(1)
+            self.progress.emit(i + 1)
+        self.finished.emit()
+
+class Window(QMainWindow):
+    # Snip...
+    def runLongTask(self):
+        # Step 2: Create a QThread object
+        self.thread = QThread()
+        # Step 3: Create a worker object
+        self.worker = Worker()
+        # Step 4: Move worker to the thread
+        self.worker.moveToThread(self.thread)
+        # Step 5: Connect signals and slots
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.progress.connect(self.reportProgress)
+        # Step 6: Start the thread
+        self.thread.start()
+
+        # Final resets
+        self.longRunningBtn.setEnabled(False)
+        self.thread.finished.connect(
+            lambda: self.longRunningBtn.setEnabled(True)
+        )
+        self.thread.finished.connect(
+            lambda: self.stepLabel.setText("Long-Running Step: 0")
+        )
+```
+
+## 线程复用:QRuunable和QThreadPool
+如果GUI引用很依赖于多线程，在创建和销毁线程就会有很大的负载，需要考虑在系统上可以启动多少线程。
+每个应用都会有一个全局线程池，通过调用`QThreadPool.globalInstance()`得到其引用。
+
+:::note
+
+使用默认的线程池很常见，也可以实例化 `QThreadPool`来创建自己的线程池。
+
+:::
+
+全局线程池会根据当前cpu的核数来维护和管理建议数量的线程。还会管理应用线程队列和任务执行。
+线程池中的线程是可复用的，防止创建和销毁线程需要的负载。
+
+要创建任务并在线程池中运行，使用QRunnable.这个类表示需要运行的任务或者一块代码，这个过程包含3个步骤:
+1. 创建QRunnable的子类，重新根据任务实现`.run()`
+2. 实例化QRunnable的子类来创建可运行的任务
+3. 调用`QThreadPool.start()`来运行任务。
+
+.run()必须包含任务运行需要的代码。.start()调用把任务交给线程池中的可用线程，如果没有可用线程，.start()
+会把任务放到线程池的运行队列，在线程可用的时候.run()会执行。
+
+```py
+import logging
+import random
+import sys
+import time
+
+from PyQt5.QtCore import QRunnable, Qt, QThreadPool
+from PyQt5.QtWidgets import (
+    QApplication,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+logging.basicConfig(format="%(message)s", level=logging.INFO)
+
+# 1. Subclass QRunnable
+class Runnable(QRunnable):
+    def __init__(self, n):
+        super().__init__()
+        self.n = n
+
+    def run(self):
+        # Your long-running task goes here ...
+        for i in range(5):
+            logging.info(f"Working in thread {self.n}, step {i + 1}/5")
+            time.sleep(random.randint(700, 2500) / 1000)
+
+class Window(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setupUi()
+
+    def setupUi(self):
+        self.setWindowTitle("QThreadPool + QRunnable")
+        self.resize(250, 150)
+        self.centralWidget = QWidget()
+        self.setCentralWidget(self.centralWidget)
+        # Create and connect widgets
+        self.label = QLabel("Hello, World!")
+        self.label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        countBtn = QPushButton("Click me!")
+        countBtn.clicked.connect(self.runTasks)
+        # Set the layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        layout.addWidget(countBtn)
+        self.centralWidget.setLayout(layout)
+
+    def runTasks(self):
+        threadCount = QThreadPool.globalInstance().maxThreadCount()
+        self.label.setText(f"Running {threadCount} Threads")
+        pool = QThreadPool.globalInstance()
+        for i in range(threadCount):
+            # 2. Instantiate the subclass of QRunnable
+            runnable = Runnable(i)
+            # 3. Call start()
+            pool.start(runnable)
+
+app = QApplication(sys.argv)
+window = Window()
+window.show()
+sys.exit(app.exec())
+```
+
+注意:print不是线程安全的最好使用logging.
+
+在python外面无法中止QRunnable对象，可以创建一个全局的布尔值，然后在QRunnable的子类中进行检查来终止。
+
+
+
+
+## Worker qthread通信
+
+
+
+
+## 总结

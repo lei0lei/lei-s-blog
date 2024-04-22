@@ -5,3 +5,407 @@ sidebar_position: 3
 ---
 
 https://realpython.com/async-io-python/
+
+
+## asyncio包和`async/await`
+
+python的asyncio包与关键字async和 await一起来帮助我们声明构建执行和管理异步代码。
+### async/await语法和原生coroutines
+
+:::note
+python的async从3.4之后才发展起来，使用之后的版本。
+:::
+
+asyncio的核心是coroutine. coroutine是一种特殊版本的generator函数。coroutine是
+这样一种函数，在到达return之前就可以终止执行然后间接的把控制传递给另一个coroutine一段
+时间。
+
+下面是一些asyncio代码，展示了其核心功能:
+
+```py
+#!/usr/bin/env python3
+# countasync.py
+
+import asyncio
+
+async def count():
+    print("One")
+    await asyncio.sleep(1)
+    print("Two")
+
+async def main():
+    await asyncio.gather(count(), count(), count())
+
+if __name__ == "__main__":
+    import time
+    s = time.perf_counter()
+    asyncio.run(main())
+    elapsed = time.perf_counter() - s
+    print(f"{__file__} executed in {elapsed:0.2f} seconds.")
+```
+
+```py
+$ python3 countasync.py
+One
+One
+One
+Two
+Two
+Two
+countasync.py executed in 1.01 seconds.
+```
+注意输出的顺序，每个count的调用都是单独的事件循环或者叫coordinator.当每个任务到达
+`await asyncio.sleep(1)`,函数都会告诉事件循环并且把控制交给事件循环。
+
+和同步版本的对比:
+```py
+#!/usr/bin/env python3
+# countsync.py
+
+import time
+
+def count():
+    print("One")
+    time.sleep(1)
+    print("Two")
+
+def main():
+    for _ in range(3):
+        count()
+
+if __name__ == "__main__":
+    s = time.perf_counter()
+    main()
+    elapsed = time.perf_counter() - s
+    print(f"{__file__} executed in {elapsed:0.2f} seconds.")
+```
+
+```
+$ python3 countsync.py
+One
+Two
+One
+Two
+One
+Two
+countsync.py executed in 3.01 seconds.
+```
+
+尽管使用time.sleep()和asyncio.sleep()看上去比较普通，他们可以替换需要运行一段时间的过程。
+time.sleep()可以表示需要消耗时间的导致函数阻塞的调用，asyncio.sleep()用来表示非阻塞的调用。
+
+await某个东西的好处是包裹的函数可以临时移交控制给另一个函数来立刻开始某件事。但是time.sleep()
+或者其他阻塞类型的调用会阻止其他的调用。
+
+### Asyncio的规则
+现在看一下更正式的async,await和coroutine函数的定义。
+- async def 引入了native coroutine或者asynchronous generator. async with 和async for 也是有效的。
+- await将函数控制权交还给事件循环，暂停函数的执行。如果python在g()的作用域内发现了一个await f(),await 
+就会告诉事件循环，暂停g()的运行直到等待的f()的结果被返回，同时让其他的工作运行。
+
+第二点看起来就像:
+```py
+async def g():
+    # Pause here and come back to g() when f() is ready
+    r = await f()
+    return r
+```
+关于何时以及如何使用或者不适用async/await 有一套严格的规则。
+- async def引入的函数是coroutine.可能会使用await,return,yield.但这都是可选的，
+生命async def Noop(): pass也是有效的。
+    - 使用await 和/或者return 会创建一个coroutine函数，要调用coroutine函数需要
+    await来得到其结果。
+    - 在async def 块中使用yield不是很常见，但是合法。这会创建一个asynchronous generator
+    可以使用async for 来迭代。让我们先忽略async generator 集中于使用coroutine函数。
+    - 使用async def 定义的任何东西都不要使用yield from ,这回导致语法错误。
+
+- 在def函数之外使用yield会导致语法错误，类似的，在async def外面使用await也会导致语法错误。
+
+下面是上述规则的总结:
+```py
+async def f(x):
+    y = await z(x)  # OK - `await` and `return` allowed in coroutines
+    return y
+
+async def g(x):
+    yield x  # OK - this is an async generator
+
+async def m(x):
+    yield from gen(x)  # No - SyntaxError
+
+def m(x):
+    y = await z(x)  # Still no - SyntaxError (no `async def` here)
+    return y
+```
+在使用await f()的时候，f()必须是awaitable的对象，目前只要知道awaitable的对象或者是
+另一个coroutine或者是定义了.__await__()方法可以返回iterator的对象。在写程序的时候
+只需要担心第一种。
+
+有的时候可能会看到旧的将函数变为协程的语法`@asyncio.coroutine`，这是基于生成器的协程。
+这与基于原生协程的方法相同，并且会在3.10移除。
+
+```py
+import asyncio
+
+@asyncio.coroutine
+def py34_coro():
+    """Generator-based coroutine, older syntax"""
+    yield from stuff()
+
+async def py35_coro():
+    """Native coroutine, modern syntax"""
+    await stuff()
+```
+
+在后面的内容我们会用基于生成器的协程来解释协程，async/await 就是把协程作为单独的python特征
+而不是生成器函数来减少不确定性。
+
+这里有一个显示asyncio减少等待时间的例子:给定一个coroutine makeradom()一直产生[0,10]范围内的随机
+整数。我们想要对该cotoutine的调用不需要互相等待:
+
+```py
+#!/usr/bin/env python3
+# rand.py
+
+import asyncio
+import random
+
+# ANSI colors
+c = (
+    "\033[0m",   # End of color
+    "\033[36m",  # Cyan
+    "\033[91m",  # Red
+    "\033[35m",  # Magenta
+)
+
+async def makerandom(idx: int, threshold: int = 6) -> int:
+    print(c[idx + 1] + f"Initiated makerandom({idx}).")
+    i = random.randint(0, 10)
+    while i <= threshold:
+        print(c[idx + 1] + f"makerandom({idx}) == {i} too low; retrying.")
+        await asyncio.sleep(idx + 1)
+        i = random.randint(0, 10)
+    print(c[idx + 1] + f"---> Finished: makerandom({idx}) == {i}" + c[0])
+    return i
+
+async def main():
+    res = await asyncio.gather(*(makerandom(i, 10 - i - 1) for i in range(3)))
+    return res
+
+if __name__ == "__main__":
+    random.seed(444)
+    r1, r2, r3 = asyncio.run(main())
+    print()
+    print(f"r1: {r1}, r2: {r2}, r3: {r3}")
+```
+<p align="center">
+<img src="https://realpython.com/cdn-cgi/image/width=300,format=auto/https://files.realpython.com/media/asyncio-rand.dffdd83b4256.gif
+" alt="win" width="400"/>
+</p>
+
+这个程序使用一个主coroutine,makerandom()然后在3个不同的输入中并行的运行。大多数程序都会包含小的
+模块化的coroutine,以及一个封装函数把每个小的coroutne连接起来。main()用来收集所有的任务，把中心化的
+coroutine映射到某个iterable或者pool中。在这个例子中，pool是range(3).
+
+## asycnio设计模式
+### chaining coroutines
+coroutine的关键特征是他们可以chain在一起。记住，coroutine对象是awaitable的，这样另一个coroutine
+可以await.这样可以把程序变成小的可管理的coroutine.
+
+```py
+
+#!/usr/bin/env python3
+# chained.py
+
+import asyncio
+import random
+import time
+
+async def part1(n: int) -> str:
+    i = random.randint(0, 10)
+    print(f"part1({n}) sleeping for {i} seconds.")
+    await asyncio.sleep(i)
+    result = f"result{n}-1"
+    print(f"Returning part1({n}) == {result}.")
+    return result
+
+async def part2(n: int, arg: str) -> str:
+    i = random.randint(0, 10)
+    print(f"part2{n, arg} sleeping for {i} seconds.")
+    await asyncio.sleep(i)
+    result = f"result{n}-2 derived from {arg}"
+    print(f"Returning part2{n, arg} == {result}.")
+    return result
+
+async def chain(n: int) -> None:
+    start = time.perf_counter()
+    p1 = await part1(n)
+    p2 = await part2(n, p1)
+    end = time.perf_counter() - start
+    print(f"-->Chained result{n} => {p2} (took {end:0.2f} seconds).")
+
+async def main(*args):
+    await asyncio.gather(*(chain(n) for n in args))
+
+if __name__ == "__main__":
+    import sys
+    random.seed(444)
+    args = [1, 2, 3] if len(sys.argv) == 1 else map(int, sys.argv[1:])
+    start = time.perf_counter()
+    asyncio.run(main(*args))
+    end = time.perf_counter() - start
+    print(f"Program finished in {end:0.2f} seconds.")
+```
+注意这段程序的输出，当part1()sleep一段时间的时候，part2()开始处理结果直到它们可用。
+
+```
+$ python3 chained.py 9 6 3
+part1(9) sleeping for 4 seconds.
+part1(6) sleeping for 4 seconds.
+part1(3) sleeping for 0 seconds.
+Returning part1(3) == result3-1.
+part2(3, 'result3-1') sleeping for 4 seconds.
+Returning part1(9) == result9-1.
+part2(9, 'result9-1') sleeping for 7 seconds.
+Returning part1(6) == result6-1.
+part2(6, 'result6-1') sleeping for 4 seconds.
+Returning part2(3, 'result3-1') == result3-2 derived from result3-1.
+-->Chained result3 => result3-2 derived from result3-1 (took 4.00 seconds).
+Returning part2(6, 'result6-1') == result6-2 derived from result6-1.
+-->Chained result6 => result6-2 derived from result6-1 (took 8.01 seconds).
+Returning part2(9, 'result9-1') == result9-2 derived from result9-1.
+-->Chained result9 => result9-2 derived from result9-1 (took 11.01 seconds).
+Program finished in 11.01 seconds.
+```
+这种情况下main()的运行时间等于任务的最大运行时间。
+
+### 使用queue
+async包提供了类似于queue模块的queue类。目前还没有用到queue结构体，在chain.py中，每个
+任务(future)由coroutine集合构成。
+
+还有一种结构体可以用在async IO中，一些互相没有关联的生产者将items添加到队列。每个生产者
+可能交错的、随机的、或者任意时间添加多个项给队列。一组消费者出现后从队列中不会等待其他信号
+从队列中提取items.
+
+这种设计中不会把消费者和生产者chain在一起。消费者不知道生产者的数量甚至添加到队列中的items
+的累计数量。队列提供了一个途径让生产者和消费者不直接交互的情况下互相通信。
+
+:::note
+尽管队列经常用在多线程程序中，出于queue.Queue()的线程安全的考虑，在asyncio中不需要考虑线程
+安全。
+:::
+
+同步版本的这个程序看上去比较差，一组阻塞的生产者顺序的给队列添加items,每次一个生产者，所有的生产者完成之后，队列
+才能被处理，消费者每次一个item处理，这回导致海量的延迟。
+
+在异步版本中asyncq.py,如下面的代码。这个工作流麻烦的地方是需要给消费者一个信号表示生产完成。否则，
+await q.get()会永远挂起，因为队列将被完全处理，但是消费者不知道生产已经完成。
+
+关键是await q.join()，会阻塞直到队列中的所有items都被接受和处理，然后取消消费者，不然会挂起并无线等待items出现。
+
+
+```py
+#!/usr/bin/env python3
+# asyncq.py
+
+import asyncio
+import itertools as it
+import os
+import random
+import time
+
+async def makeitem(size: int = 5) -> str:
+    return os.urandom(size).hex()
+
+async def randsleep(caller=None) -> None:
+    i = random.randint(0, 10)
+    if caller:
+        print(f"{caller} sleeping for {i} seconds.")
+    await asyncio.sleep(i)
+
+async def produce(name: int, q: asyncio.Queue) -> None:
+    n = random.randint(0, 10)
+    for _ in it.repeat(None, n):  # Synchronous loop for each single producer
+        await randsleep(caller=f"Producer {name}")
+        i = await makeitem()
+        t = time.perf_counter()
+        await q.put((i, t))
+        print(f"Producer {name} added <{i}> to queue.")
+
+async def consume(name: int, q: asyncio.Queue) -> None:
+    while True:
+        await randsleep(caller=f"Consumer {name}")
+        i, t = await q.get()
+        now = time.perf_counter()
+        print(f"Consumer {name} got element <{i}>"
+              f" in {now-t:0.5f} seconds.")
+        q.task_done()
+
+async def main(nprod: int, ncon: int):
+    q = asyncio.Queue()
+    producers = [asyncio.create_task(produce(n, q)) for n in range(nprod)]
+    consumers = [asyncio.create_task(consume(n, q)) for n in range(ncon)]
+    await asyncio.gather(*producers)
+    await q.join()  # Implicitly awaits consumers, too
+    for c in consumers:
+        c.cancel()
+
+if __name__ == "__main__":
+    import argparse
+    random.seed(444)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--nprod", type=int, default=5)
+    parser.add_argument("-c", "--ncon", type=int, default=10)
+    ns = parser.parse_args()
+    start = time.perf_counter()
+    asyncio.run(main(**ns.__dict__))
+    elapsed = time.perf_counter() - start
+    print(f"Program completed in {elapsed:0.5f} seconds.")
+```
+The first few coroutines are helper functions that return a random string, a fractional-second performance counter, and a random integer. A producer puts anywhere from 1 to 5 items into the queue. Each item is a tuple of (i, t) where i is a random string and t is the time at which the producer attempts to put the tuple into the queue.
+
+When a consumer pulls an item out, it simply calculates the elapsed time that the item sat in the queue using the timestamp that the item was put in with.
+
+Keep in mind that asyncio.sleep() is used to mimic some other, more complex coroutine that would eat up time and block all other execution if it were a regular blocking function.
+
+Here is a test run with two producers and five consumers:
+
+```
+$ python3 asyncq.py -p 2 -c 5
+Producer 0 sleeping for 3 seconds.
+Producer 1 sleeping for 3 seconds.
+Consumer 0 sleeping for 4 seconds.
+Consumer 1 sleeping for 3 seconds.
+Consumer 2 sleeping for 3 seconds.
+Consumer 3 sleeping for 5 seconds.
+Consumer 4 sleeping for 4 seconds.
+Producer 0 added <377b1e8f82> to queue.
+Producer 0 sleeping for 5 seconds.
+Producer 1 added <413b8802f8> to queue.
+Consumer 1 got element <377b1e8f82> in 0.00013 seconds.
+Consumer 1 sleeping for 3 seconds.
+Consumer 2 got element <413b8802f8> in 0.00009 seconds.
+Consumer 2 sleeping for 4 seconds.
+Producer 0 added <06c055b3ab> to queue.
+Producer 0 sleeping for 1 seconds.
+Consumer 0 got element <06c055b3ab> in 0.00021 seconds.
+Consumer 0 sleeping for 4 seconds.
+Producer 0 added <17a8613276> to queue.
+Consumer 4 got element <17a8613276> in 0.00022 seconds.
+Consumer 4 sleeping for 5 seconds.
+Program completed in 9.00954 seconds.
+
+```
+In this case, the items process in fractions of a second. A delay can be due to two reasons:
+
+Standard, largely unavoidable overhead
+Situations where all consumers are sleeping when an item appears in the queue
+With regards to the second reason, luckily, it is perfectly normal to scale to hundreds or thousands of consumers. You should have no problem with python3 asyncq.py -p 5 -c 100. The point here is that, theoretically, you could have different users on different systems controlling the management of producers and consumers, with the queue serving as the central throughput.
+
+So far, you’ve been thrown right into the fire and seen three related examples of asyncio calling coroutines defined with async and await. If you’re not completely following or just want to get deeper into the mechanics of how modern coroutines came to be in Python, you’ll start from square one with the next section.
+
+## asyncio's roots in generators
+
+## async request
+
+## context 中的asyncio

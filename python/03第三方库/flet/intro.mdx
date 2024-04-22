@@ -749,7 +749,7 @@ flet 服务器的url策略可以通过`FLET_ROUTE_URL_STRATEGY`环境变量配�
 
 ## async
 
-flet app可以写成async形式的。默认情况下flet会在单独的线程中执行control的event handler.但是这可能会
+flet app可以写成async形式的,可以使用async app或者其他的python async库。默认情况下flet会在单独的线程中执行control的event handler.但是这可能会
 造成cpu低效。asyncio允许在一个单独线程中实现并发，在coroutine中切换执行上下文。对于使用pyodide发布为静态
 网站比较有用。
 
@@ -797,7 +797,7 @@ python中没有async lambda,但是如果有lambda envent handler会很方便。
 page.on_error = lambda e: print("Page error:", e.data)
 ```
 
-### sleep()
+### `sleeping()`
 如果要在async flet app中延迟代码执行，应该使用asyncio.sleep()而不是time.sleep(),比如:
 ```py
 import asyncio

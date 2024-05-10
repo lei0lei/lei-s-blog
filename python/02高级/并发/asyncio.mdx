@@ -6,21 +6,70 @@ sidebar_position: 3
 
 https://realpython.com/async-io-python/
 
+本文包含:
+- async IO, 很多编程语言实现的非语言范式
+- async/await, python中定义coroutine的两个关键字
+- asyncio, python中运行和管理coroutine的基础和API
+
+asyncio相比multiprocessing和threading没那么出名,因此首先对几个概念进行以下对比。
+
+parallelism意思是同时运行多个操作,multiprocessing是其实现的一种方式,将多个task分发给多个
+cpu(物理上或者多个核心),这很适合cpu受限的任务:在实际中会和for循环和数学操作联系紧密。
+
+concurrenct比parallelism概念上更加宽泛,多个task是以重叠的行为进行运行的。
+
+threading是一种cocurrent模型,多个thread轮流执行task.一个进程可以包含多个threads.由于GIL
+的存在python的线程会更加复杂。关于线程,需要知道的是这是用于IO受限的任务。CPU受限表示需要cpu的
+核从开始到结束一直工作,IO受限表示需要在等待I/O完成上花费时间。
+
+总之cocurrency包含了多进程和线程,多进程是parallelism的一种形式或者说特殊情况。python通过
+标准库中的multiprocessing,threading和cocurrent.futures包来提供这些概念的支持。
+
+经过了一些发展,一种设计被融合进了CPython:async IO,这个概念在其他的如Go,c#和Scala中也有存在。
+asyncio既不是threading也不是multiprocessing,而且也不构建在两者之上。
+
+asyncio是单线程单进程的设计:使用的是cooperative multitasking。asyncio会在单线程单进程上营造
+出cocurrency的感觉,coroutine可以并发的被调度但是本身不是并发。asyncio更接近于threading而不是
+multiprocess但是跟两者都有很大不同。
+
+asynchronous很难做一个精准的定义,但是可以有两个特点来辅助理解:
+- 异步的routine可以在等待结果的时候进行pause同时让其他routine继续运行
+- 异步的代码可以营造出并发的感觉。
+
+
+:::tip
+2017 pycon上 Miguel Grinberg有一个对异步的解释:
+
+象棋大师Judit举办了一个象棋比赛,1Vn,他可以有两种方式进行比赛:同步方式和异步方式。
+
+
+假设Judit有24个对手,Judit每下一步棋花5秒,对手花55秒,平均每个完局需要双方各30步。
+
+- 同步版本: Judit一次打一个对手直达游戏结束,每个游戏要花(55+5)*30=1800s,总共要12h.
+- 异步版本: Judit一桌一桌的打,在一桌上下一步棋,挪到第二桌再下一步,24个对手都走完一步
+要24*5=120s,总共要1h.
+
+类似的,asyncio将需要长的等待时间的函数进行阻塞并让其他函数执行。python的异步概念是构建在回调,事件,
+transports,protocol,future之上的,并不是很容易理解和使用,asyncio终究提供了一个方便的方式。
+
+:::
 
 ## asyncio包和`async/await`
 
-python的asyncio包与关键字async和 await一起来帮助我们声明构建执行和管理异步代码。
+python的asyncio包与关键字async和 await可以一起用来帮助我们声明构建执行和管理异步代码。
 ### async/await语法和原生coroutines
 
 :::note
-python的async从3.4之后才发展起来，使用之后的版本。
+python的async从3.4之后才发展起来,使用之后的python版本。
 :::
 
 asyncio的核心是coroutine. coroutine是一种特殊版本的generator函数。coroutine是
-这样一种函数，在到达return之前就可以终止执行然后间接的把控制传递给另一个coroutine一段
+这样一种函数,在到达return之前就可以终止执行然后间接的把控制传递给另一个coroutine一段
 时间。
 
-下面是一些asyncio代码，展示了其核心功能:
+之后我们会更深入的看传统的生成器如何实现coroutine的。
+
+下面是一些asyncio代码,展示了其核心功能:
 
 ```py
 #!/usr/bin/env python3
@@ -54,7 +103,7 @@ Two
 Two
 countasync.py executed in 1.01 seconds.
 ```
-注意输出的顺序，每个count的调用都是单独的事件循环或者叫coordinator.当每个任务到达
+注意输出的顺序,每个count的调用都是单独的事件循环或者叫coordinator.当每个任务到达
 `await asyncio.sleep(1)`,函数都会告诉事件循环并且把控制交给事件循环。
 
 和同步版本的对比:
@@ -92,10 +141,13 @@ countsync.py executed in 3.01 seconds.
 ```
 
 尽管使用time.sleep()和asyncio.sleep()看上去比较普通，他们可以替换需要运行一段时间的过程。
-time.sleep()可以表示需要消耗时间的导致函数阻塞的调用，asyncio.sleep()用来表示非阻塞的调用。
+time.sleep()可以表示需要消耗时间的导致函数阻塞的调用,asyncio.sleep()用来表示非阻塞的调用。
 
 await某个东西的好处是包裹的函数可以临时移交控制给另一个函数来立刻开始某件事。但是time.sleep()
 或者其他阻塞类型的调用会阻止其他的调用。
+
+之后我们会看到await的优点, 用await的函数可以临时把控制给另一个函数做其他的事,而同步代码则是
+阻止所有的运行。
 
 ### Asyncio的规则
 现在看一下更正式的async,await和coroutine函数的定义。
@@ -405,6 +457,173 @@ With regards to the second reason, luckily, it is perfectly normal to scale to h
 So far, you’ve been thrown right into the fire and seen three related examples of asyncio calling coroutines defined with async and await. If you’re not completely following or just want to get deeper into the mechanics of how modern coroutines came to be in Python, you’ll start from square one with the next section.
 
 ## asyncio's roots in generators
+在前面我们看到过一个旧式的基于生成器的coroutine,尽管有一些过时但是值得再回顾:
+
+```py
+import asyncio
+
+@asyncio.coroutine
+def py34_coro():
+    """Generator-based coroutine"""
+    # No need to build these yourself, but be aware of what they are
+    s = yield from stuff()
+    return s
+
+async def py35_coro():
+    """Native coroutine, modern syntax"""
+    s = await stuff()
+    return s
+
+async def stuff():
+    return 0x10, 0x20, 0x30
+
+```
+在不使用await或者asycio.run()或者其他asyncio提供的函数的情况下调用py34_coro或者py35_coro会发生什么?
+结果会返回一个coroutine对象。小问题:python的什么语言特征也有类似情况?(那个语言特征在调用自身的时候不会做一些实际的任务?)
+
+generator是一个答案,因为coroutine本身就是增强的generator.
+
+```py
+>>> def gen():
+...     yield 0x10, 0x20, 0x30
+...
+>>> g = gen()
+>>> g  # Nothing much happens - need to iterate with `.__next__()`
+<generator object gen at 0x1012705e8>
+>>> next(g)
+(16, 32, 48)
+```
+
+generator函数是asyncio的基础(无论是用async def还是@asyncio.coroutine装饰器),await更接近于yield from而不是yield.
+
+generator的一个关键特征是可以中止并重启,比如在generator对象上break然后之后从剩下的值上resume.当生成器函数到达yield时,
+yield这个值然后就会空闲直到要yield下一个值。
+
+```py
+>>> from itertools import cycle
+>>> def endless():
+...     """Yields 9, 8, 7, 6, 9, 8, 7, 6, ... forever"""
+...     yield from cycle((9, 8, 7, 6))
+
+>>> e = endless()
+>>> total = 0
+>>> for i in e:
+...     if total < 30:
+...         print(i, end=" ")
+...         total += i
+...     else:
+...         print()
+...         # Pause execution. We can resume later.
+...         break
+9 8 7 6 9 8 7 6 9 8 7 6 9 8
+
+>>> # Resume
+>>> next(e), next(e), next(e)
+(6, 9, 8)
+```
+
+await关键字有类似的功能,在coroutine中止的地方打一个断点,这意味着临时移交控制但是没有完全终止。
+这就是函数和generator的区别,函数是 all or nothing,一旦启动在return之前不会停止,然后把值返回
+给调用方。generator,在到达yield的时候就停止,不仅可以把值返回给调用栈,也可以保存一份本地变量,
+这样在其上调用next()的时候可以进行恢复.
+
+generator还有一个更少为人知的特征,可以通过.send()方法把值送给generator,这样generator可以互相调用
+而不会相互阻塞。
+
+有一些资源可以辅助理解:
+
+- https://peps.python.org/pep-0342/
+- https://snarky.ca/how-the-heck-does-async-await-work-in-python-3-5/
+- https://pymotw.com/3/asyncio/coroutines.html
+- https://www.dabeaz.com/courses.html
+
+
+### async for 和async generator+comprehension
+
+除了普通的async/await,python还有async for用来在异步迭代器中迭代。
+异步迭代器的目标是在迭代的时候调用异步代码。对应的概念就是异步迭代器,在原生的coroutine
+中可以使用await, return或者yield:
+```py
+>>> async def mygen(u: int = 10):
+...     """Yield powers of 2."""
+...     i = 0
+...     while i < u:
+...         yield 2 ** i
+...         i += 1
+...         await asyncio.sleep(0.1)
+```
+
+```py
+>>> async def main():
+...     # This does *not* introduce concurrent execution
+...     # It is meant to show syntax only
+...     g = [i async for i in mygen()]
+...     f = [j async for j in mygen() if not (j // 3 % 5)]
+...     return g, f
+...
+>>> g, f = asyncio.run(main())
+>>> g
+[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+>>> f
+[1, 2, 16, 32, 256, 512]
+
+```
+注意，既不是异步生成器也不是comprehension让这个iter实现并发,这里只是提供了跟同步版本类似的形式，但是可以让循环放弃控制权，这样让
+事件循环运行其他coroutine.
+
+换句话说，异步的iterator和异步的generator不是设计用来并行的将某个函数map到一个序列或者iter上，只是让coroutine移交控制权，这样其他任务
+可以运行。async for 和async with只用在普通的for或者with会破坏await的情况下。
+
+### 事件循环和asyncio.run()
+
+事件循环可以理解为监控coroutine的while True循环，从空闲的coroutine上拿到反馈，同时找能运行的coroutine.
+事件循环的管理可以隐式的用一个函数调用:
+```py
+asyncio.run(main())  # Python 3.7+
+```
+asyncio.run从3.7引入，可以获得事件循环，运行任务直到完成然后关闭事件循环。有一个事件循环更长的写法:
+```py
+loop = asyncio.get_event_loop()
+try:
+    loop.run_until_complete(main())
+finally:
+    loop.close()
+```
+除非要微调事件循环，不然asyncio.run()就满足大部分要求。如果需要和事件循环进行交互，loop是一个很好的旧式对象可以使用
+loop.is_running和loop.is_closed()来自检。在需要更精细的控制时可以操作这个对象，比如需要给循环一个参数来调度回调。
+
+下面有一些关于事件循环的点:
+
+1. coroutine在绑定到事件循环之前不会产生很多行为。
+
+```py
+import asyncio
+
+async def main():
+    print("Hello ...")
+    await asyncio.sleep(1)
+    print("World!")
+
+routine = main()
+routine
+```
+需要使用asyncio.run()来实际的调度main() coroutine(future对象)在事件循环中实际执行:
+```py
+>>> asyncio.run(routine)
+Hello ...
+World!
+```
+其他的coroutine也可以用await执行，经常见到的是把main()封装在asyncio.run()然后把coroutine
+用await chain在一块调用。
+
+2. 默认情况下，asyncio事件循环运行在单线程单cpu上，这样会更加高效，也可以在多个核心上运行事件循环，比如:https://www.youtube.com/watch?v=0kXaLh8Fz3k&t=630s
+
+3. 事件循环时可插拔的,可以自己写一个事件循环实现然后让他运行tasks.可以查看uvloop包，Cython中实现的实现循环
+
+asyncio包本身有两个事件循环实现:https://docs.python.org/3/library/asyncio-eventloop.html#event-loop-implementations
+默认是使用selector模块。
+
+
 
 ## async request
 

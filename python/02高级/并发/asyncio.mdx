@@ -140,10 +140,10 @@ Two
 countsync.py executed in 3.01 seconds.
 ```
 
-尽管使用time.sleep()和asyncio.sleep()看上去比较普通，他们可以替换需要运行一段时间的过程。
+使用time.sleep()和asyncio.sleep()看上去比较简单，可以替换需要运行一段时间的处理过程。
 time.sleep()可以表示需要消耗时间的导致函数阻塞的调用,asyncio.sleep()用来表示非阻塞的调用。
 
-await某个东西的好处是包裹的函数可以临时移交控制给另一个函数来立刻开始某件事。但是time.sleep()
+之后我们会看到，await某个过程的好处是包裹的函数可以临时移交控制给另一个函数来立刻开始某件事。但是time.sleep()
 或者其他阻塞类型的调用会阻止其他的调用。
 
 之后我们会看到await的优点, 用await的函数可以临时把控制给另一个函数做其他的事,而同步代码则是
@@ -151,7 +151,7 @@ await某个东西的好处是包裹的函数可以临时移交控制给另一个
 
 ### Asyncio的规则
 现在看一下更正式的async,await和coroutine函数的定义。
-- async def 引入了native coroutine或者asynchronous generator. async with 和async for 也是有效的。
+- async def 引入了native coroutine或者asynchronous generator. async with 和async for 表达式也是有效的。
 - await将函数控制权交还给事件循环，暂停函数的执行。如果python在g()的作用域内发现了一个await f(),await 
 就会告诉事件循环，暂停g()的运行直到等待的f()的结果被返回，同时让其他的工作运行。
 
@@ -162,13 +162,13 @@ async def g():
     r = await f()
     return r
 ```
-关于何时以及如何使用或者不适用async/await 有一套严格的规则。
+关于何时以及如何使用或者不使用async/await 有一套严格的规则。
 - async def引入的函数是coroutine.可能会使用await,return,yield.但这都是可选的，
-生命async def Noop(): pass也是有效的。
+声明async def Noop(): pass也是有效的。
     - 使用await 和/或者return 会创建一个coroutine函数，要调用coroutine函数需要
     await来得到其结果。
     - 在async def 块中使用yield不是很常见，但是合法。这会创建一个asynchronous generator
-    可以使用async for 来迭代。让我们先忽略async generator 集中于使用coroutine函数。
+    可以使用async for 来迭代。让我们先忽略async generator， 集中于使用coroutine函数。
     - 使用async def 定义的任何东西都不要使用yield from ,这回导致语法错误。
 
 - 在def函数之外使用yield会导致语法错误，类似的，在async def外面使用await也会导致语法错误。
@@ -622,8 +622,6 @@ World!
 
 asyncio包本身有两个事件循环实现:https://docs.python.org/3/library/asyncio-eventloop.html#event-loop-implementations
 默认是使用selector模块。
-
-
 
 ## async request
 

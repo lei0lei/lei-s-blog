@@ -11,6 +11,9 @@ https://rust-book.cs.brown.edu/
 
 https://course.rs/about-book.html
 
+https://doc.rust-lang.org/nomicon/
+
+https://rust-lang.github.io/async-book/
 
 
 # Tutorial Intro

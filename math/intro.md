@@ -1,6 +1,6 @@
 ---
-title: python
-slug: /python/intro
+title: 数学
+slug: /math/intro
 sidebar_position: 1
 ---
 

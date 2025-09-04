@@ -121,18 +121,18 @@ const config = {
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'paper',
-        path: 'paper',
-        routeBasePath: 'paper',
+        id: 'project',
+        path: 'project',
+        routeBasePath: 'project',
         sidebarPath: require.resolve('./sidebars.js'),
       }, 
     ],
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'project',
-        path: 'project',
-        routeBasePath: 'project',
+        id: 'math',
+        path: 'math',
+        routeBasePath: 'math',
         sidebarPath: require.resolve('./sidebars.js'),
       }, 
     ],
@@ -147,7 +147,6 @@ const config = {
           src: 'img/logo.svg',
         },
         items: [
-          {to: '/blog', label: 'Blog', position: 'left'},
           {
             label: 'Language',
             position: 'left',
@@ -182,34 +181,6 @@ const config = {
             type: 'docSidebar',
             position: 'left',
             sidebarId: 'tutorialSidebar',
-            docsPluginId: 'python',
-            label: 'python',
-          },
-          {
-            type: 'docSidebar',
-            position: 'left',
-            sidebarId: 'tutorialSidebar',
-            docsPluginId: 'cpp',
-            label: 'cpp',
-          },
-          {
-            type: 'docSidebar',
-            position: 'left',
-            sidebarId: 'tutorialSidebar',
-            docsPluginId: 'rust',
-            label: 'rust',
-          },
-          {
-            type: 'docSidebar',
-            position: 'left',
-            sidebarId: 'tutorialSidebar',
-            docsPluginId: 'golang',
-            label: 'golang',
-          },
-          {
-            type: 'docSidebar',
-            position: 'left',
-            sidebarId: 'tutorialSidebar',
             docsPluginId: 'algos',
             label: 'algos',
           },
@@ -227,7 +198,13 @@ const config = {
             docsPluginId: 'project',
             label: 'project',
           },
-          {to: '/blog', label: 'paper', position: 'left'},
+          {
+            type: 'docSidebar',
+            position: 'left',
+            sidebarId: 'tutorialSidebar',
+            docsPluginId: 'math',
+            label: 'math',
+          },
           {
             href: 'https://github.com/facebook/docusaurus',
             label: 'GitHub',

@@ -149,6 +149,36 @@ const config = {
         items: [
           {to: '/blog', label: 'Blog', position: 'left'},
           {
+            label: 'Language',
+            position: 'left',
+            items: [
+              {
+                type: 'docSidebar',
+                sidebarId: 'tutorialSidebar',
+                docsPluginId: 'python',
+                label: 'Python',
+              },
+              {
+                type: 'docSidebar',
+                sidebarId: 'tutorialSidebar',
+                docsPluginId: 'cpp',
+                label: 'C++',
+              },
+              {
+                type: 'docSidebar',
+                sidebarId: 'tutorialSidebar',
+                docsPluginId: 'rust',
+                label: 'Rust',
+              },
+              {
+                type: 'docSidebar',
+                sidebarId: 'tutorialSidebar',
+                docsPluginId: 'golang',
+                label: 'Go',
+              },
+            ],
+          },
+          {
             type: 'docSidebar',
             position: 'left',
             sidebarId: 'tutorialSidebar',

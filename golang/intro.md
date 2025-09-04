@@ -1,6 +1,6 @@
 ---
-title: python
-slug: /python/intro
+title: go
+slug: /golang/intro
 sidebar_position: 1
 ---
 

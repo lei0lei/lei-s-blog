@@ -17,3 +17,4 @@ To get started with Docusaurus on Vercel, you can use the [Docusaurus CLI](https
 ```shell
 npx create-docusaurus@latest my-website classic
 ```
+   
